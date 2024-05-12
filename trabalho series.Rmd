@@ -1,0 +1,106 @@
+---
+title: "Trabalho 1 Séries temporais"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+## Sobre os dados 
+
+Nosso conjunto de dados é referente aos financiamentos feitos pelo Banco Nacional do Desenvolvimento (BNDES) de forma indireta, ou seja, o cliente solicita o financiamento por meio de uma instituição financeira credenciada e não diretamente ao BNDES 
+
+
+No financiamento indireto pois quem assue o risco do não pagamento passa a ser a instituição financeira credenciada em questão, que também negocia os prazos e condições do financiamento, assim como cabe a ela aceitar ou não o financiamento. 
+
+O financiamento indireto pode ser feita de forma automática, ou seja, que não precisa passar por homologação do BNDES ou não automática, aonde o banco avalia cada solicitação individualmente. Para o financiamento não automático há um valor mínimo de 20 milhões de reais. 
+
+Nossa base de dados consiste de informações de financiamentos indiretos de forma não automática informados pelo BNDES entre janeiro de 2017 a janeiro de 2024 2024. Nossa planilha originalmente constava com detalhes de 321272 operações. Para esse trabalho agregamos o número de operações e analisaremos elas em caráter mensal. 
+
+```{r message=FALSE, warning=FALSE}
+library(readr)
+
+dados <-  read_csv("dados_series.csv")
+dados <-  dados$V1
+
+serie <-  ts(dados, start = c(2017,1), end = c(2023, 1), frequency = 12 )
+
+
+plot(serie, main = "Número de financiamentos indiretos feitos pelo BNDES em âmbito \n nacional mês a mês de janeiro de 2017 a janeiro de 2023", xlab = "Período", ylab = "Quantidade de financiamentos")
+
+
+```
+Imputamos para retirar valores extremos e após isso
+Derivamos a série para retirar a estacionariedade 
+
+```{r}
+#usando a media 
+dados[12] <-  (dados[11] + dados[13])/2
+dados[60] <-  (dados[59] + dados[61])/2
+serie <-  ts(dados, start = c(2017,1), end = c(2024, 1), frequency = 12 )
+
+```
+
+
+## FAC E FACP
+
+```{r message=FALSE, warning=FALSE}
+library(forecast)
+```
+
+```{r}
+ggtsdisplay(serie)
+```
+
+
+Usamos AR(1)
+
+```{r}
+modelo1 <- Arima(serie, order = c(1,0,0))
+modelo1
+```
+
+### Teste de significância 
+
+```{r}
+library(lmtest)
+coeftest(modelo1)
+
+```
+Os coeficientes deram significativos 
+entretanto se usarmos a série derivada 
+
+### sobrefixando 
+
+
+```{r}
+#AR(2)
+modelo3 <- Arima(serie, order = c(2,0,0))
+modelo3 
+coeftest(modelo3)
+
+```
+Piorou o ajuste dos coeficientes
+
+```{r}
+#ARMA(1,1)
+modelo4 <- Arima(serie, order = c(1,0,1))
+modelo4 
+coeftest(modelo4)
+```
+Piorou tambem. 
+
+Assim, nosso modelo escolhido foi o AR(1)
+
+$$ \hat{Y}_t = 0.662\hat{Y}_{t-1} $$ 
+## Teste de LJung-Box
+
+```{r}
+tsdiag(modelo1)
+```
+Todos os p-valores são maiores que 0.05 o que nos leva a não rejeitar a hipótese de erros serem um ruído branco a este nível de significância. 
+
+
+## bibliografia
+
+* BNDES. Formas de apoio. https://www.bndes.gov.br/wps/portal/site/home/financiamento/guia/Formas-de-Apoio  [Acesso em 10/04/2024]
